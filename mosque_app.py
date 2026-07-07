@@ -137,20 +137,7 @@ TRANSLATIONS = {
         "from": "From", "to": "To", "search": "Search", "generate": "Generate",
         "backup_path": "Default Backup Path", "browse": "Browse",
         "confirm_identity": "Confirm Identity", "incorrect_password": "⚠ Incorrect Password",
-        "print": "Print", "save_and_print": "💾 & 🖨️  Save & Print",
-        "err_month_locked": "⚠ This month is locked for data integrity.",
-        "close_month": "Close Month", "reopen_month": "Reopen Month",
-        "month_closed": "Month Closed", "month_open": "Month Open",
-        "imam_name": "Operator Name", "notes": "Notes",
-        "operator_name": "Operator Name", "col_operator": "Operator",
     },
-
-
-
-
-
-
-
 
 
     "ur": {
@@ -197,8 +184,7 @@ TRANSLATIONS = {
         "report_title": "مسجد مالیاتی رپورٹ",
         "settings": "⚙  ترتیبات", "mosque_name": "مسجد کا نام",
         "address": "پتہ", "phone_number": "فون نمبر",
-        "imam_name": "آپریٹر کا نام", "notes": "نوٹس",
-
+        "imam_name": "امام کا نام", "notes": "نوٹس",
         "theme": "تھیم", "dark_mode": "ڈارک موڈ", "light_mode": "لائٹ موڈ",
         "backup_data": "بیک اپ لیں", "restore_data": "ڈیٹا بحال کریں",
         "save_settings": "💾  ترتیبات محفوظ کریں", "settings_saved": "✅  ترتیبات محفوظ ہو گئیں!",
@@ -238,20 +224,7 @@ TRANSLATIONS = {
         "from": "سے", "to": "تک", "search": "تلاش", "generate": "جنریٹ",
         "backup_path": "بیک اپ کا راستہ", "browse": "براؤز",
         "confirm_identity": "شناخت کی تصدیق کریں", "incorrect_password": "⚠ پاس ورڈ غلط ہے",
-        "print": "پرنٹ کریں", "save_and_print": "محفوظ کریں اور پرنٹ کریں",
-        "err_month_locked": "⚠ ڈیٹا کی حفاظت کے لیے یہ مہینہ لاک کر دیا گیا ہے۔",
-        "close_month": "مہینہ لاک کریں", "reopen_month": "مہینہ دوبارہ کھولیں",
-        "month_closed": "مہینہ لاک ہے", "month_open": "مہینہ کھلا ہے",
-        "imam_name": "آپریٹر کا نام", "notes": "نوٹس",
-        "operator_name": "آپریٹر کا نام", "col_operator": "آپریٹر",
     },
-
-
-
-
-
-
-
 
 
 }
@@ -307,8 +280,14 @@ def get_month_options():
 # DATABASE
 # ──────────────────────────────────────────────
 
+def get_base_dir():
+    import sys
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
 def get_db_path():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), DB_NAME)
+    return os.path.join(get_base_dir(), DB_NAME)
 
 def init_database():
     conn = sqlite3.connect(get_db_path())
@@ -316,16 +295,12 @@ def init_database():
     c.execute("""CREATE TABLE IF NOT EXISTS donations (
         id INTEGER PRIMARY KEY AUTOINCREMENT, donor_name TEXT,
         amount REAL NOT NULL, category TEXT, payment_type TEXT, date TEXT,
-        is_deleted INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT,
-        operator TEXT)""")
-
+        is_deleted INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT)""")
     c.execute("""CREATE TABLE IF NOT EXISTS expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, amount REAL,
         category TEXT, paid_to TEXT, date TEXT, notes TEXT,
         fund_type TEXT DEFAULT 'General',
-        is_deleted INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT,
-        operator TEXT)""")
-
+        is_deleted INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT)""")
     
     # Check for missing columns in existing tables
     for table in ["donations", "expenses"]:
@@ -337,9 +312,6 @@ def init_database():
             c.execute(f"ALTER TABLE {table} ADD COLUMN created_at TEXT")
         if "updated_at" not in columns:
             c.execute(f"ALTER TABLE {table} ADD COLUMN updated_at TEXT")
-        if "operator" not in columns:
-            c.execute(f"ALTER TABLE {table} ADD COLUMN operator TEXT")
-
 
     # DB Upgrades for version 2
     c.execute("PRAGMA table_info(expenses)")
@@ -364,13 +336,7 @@ def init_database():
     c.execute("""CREATE TABLE IF NOT EXISTS audit_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         action_type TEXT, table_name TEXT, record_id INTEGER,
-        description TEXT, timestamp TEXT, operator TEXT)""")
-
-    c.execute("PRAGMA table_info(audit_log)")
-    columns = [col[1] for col in c.fetchall()]
-    if "operator" not in columns:
-        c.execute("ALTER TABLE audit_log ADD COLUMN operator TEXT")
-
+        description TEXT, timestamp TEXT)""")
 
 
 
@@ -387,24 +353,8 @@ def init_database():
         id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, 
         role TEXT NOT NULL, salary REAL NOT NULL)""")
 
-    # Performance Indexes
-    c.execute("CREATE INDEX IF NOT EXISTS idx_don_date ON donations(date)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_don_cat ON donations(category)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_don_del ON donations(is_deleted)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_exp_date ON expenses(date)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_exp_fund ON expenses(fund_type)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_exp_del ON expenses(is_deleted)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(timestamp)")
-    
-    c.execute("""CREATE TABLE IF NOT EXISTS closed_months (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, 
-        month_year TEXT UNIQUE, closed_at TEXT)""")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_closed_mo ON closed_months(month_year)")
-
-
     conn.commit()
     conn.close()
-
 
 def get_current_balance():
     conn = sqlite3.connect(get_db_path())
@@ -416,16 +366,16 @@ def get_current_balance():
     conn.close()
     return td - te
 
-def log_action(action_type, table_name, record_id, description, operator=None):
+def log_action(action_type, table_name, record_id, description):
     """Log an action to the audit_log table."""
     conn = sqlite3.connect(get_db_path())
     timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     conn.execute("""INSERT INTO audit_log 
-        (action_type, table_name, record_id, description, timestamp, operator)
-        VALUES (?, ?, ?, ?, ?, ?)""",
-        (action_type, table_name, record_id, description, timestamp, operator))
-    conn.commit(); conn.close()
-
+        (action_type, table_name, record_id, description, timestamp)
+        VALUES (?, ?, ?, ?, ?)""",
+        (action_type, table_name, record_id, description, timestamp))
+    conn.commit()
+    conn.close()
 
 def get_fund_balances():
 
@@ -442,51 +392,10 @@ def get_fund_balances():
     conn.close()
     return balances
 
-def is_month_closed(month_year):
-    """Check if a month (MM-YYYY) is closed."""
-    conn = sqlite3.connect(get_db_path())
-    c = conn.cursor()
-    c.execute("SELECT 1 FROM closed_months WHERE month_year=?", (month_year,))
-    res = c.fetchone()
-    conn.close()
-    return res is not None
-
-def check_date_lock(date_str):
-    """Standard check for transaction lock by date (DD-MM-YYYY or YYYY-MM-DD)."""
-    if not date_str or date_str == "—": return False
-    # Standardize to MM-YYYY
-    try:
-        if "-" in date_str:
-            parts = date_str.split("-")
-            if len(parts[0]) == 4: # YYYY-MM-DD
-                mo_yr = f"{parts[1]}-{parts[0]}"
-            else: # DD-MM-YYYY
-                mo_yr = f"{parts[1]}-{parts[2]}"
-            return is_month_closed(mo_yr)
-    except: pass
-    return False
-
-def close_period(month_year):
-    """Lock a month for modification."""
-    conn = sqlite3.connect(get_db_path())
-    now = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-    conn.execute("INSERT OR IGNORE INTO closed_months (month_year, closed_at) VALUES (?,?)", (month_year, now))
-    conn.commit(); conn.close()
-    log_action("PERIOD_CLOSE", "closed_months", 0, f"Period {month_year} closed")
-
-def reopen_period(month_year):
-    """Unlock a month for modification."""
-    conn = sqlite3.connect(get_db_path())
-    conn.execute("DELETE FROM closed_months WHERE month_year=?", (month_year,))
-    conn.commit(); conn.close()
-    log_action("PERIOD_REOPEN", "closed_months", 0, f"Period {month_year} reopened")
-
 def fetch_audit_logs(action_type=None, start_date=None, end_date=None):
-
     """Fetch audit logs with optional filters."""
     conn = sqlite3.connect(get_db_path())
-    query = "SELECT timestamp, action_type, description, table_name, record_id, operator FROM audit_log WHERE 1=1"
-
+    query = "SELECT timestamp, action_type, description, table_name, record_id FROM audit_log WHERE 1=1"
     params = []
     
     if action_type and action_type != "All":
@@ -508,10 +417,9 @@ def fetch_audit_logs(action_type=None, start_date=None, end_date=None):
         query += f" AND {sq_date} <= ?"
         params.append(parse_date_to_ymd(end_date))
         
-    query += " ORDER BY timestamp DESC, id DESC LIMIT 200"
+    query += " ORDER BY timestamp DESC, id DESC"
     
     c = conn.cursor()
-
     c.execute(query, params)
     rows = c.fetchall()
     conn.close()
@@ -656,11 +564,10 @@ def fetch_recent_transactions(limit=5):
     c = conn.cursor()
     # Including id and updated_at for Edit UI, and fund_type/category
     c.execute(f"""
-        SELECT 'Donation' AS type, donor_name, category, amount, date, id, updated_at, category as fund, operator FROM donations WHERE is_deleted=0
+        SELECT 'Donation' AS type, donor_name, category, amount, date, id, updated_at, category as fund FROM donations WHERE is_deleted=0
         UNION ALL 
-        SELECT 'Expense', title, category, amount, date, id, updated_at, fund_type as fund, operator FROM expenses WHERE is_deleted=0
+        SELECT 'Expense', title, category, amount, date, id, updated_at, fund_type as fund FROM expenses WHERE is_deleted=0
         ORDER BY date DESC, updated_at DESC LIMIT {limit}""")
-
     rows = c.fetchall()
     conn.close()
     return rows
@@ -672,25 +579,22 @@ def fetch_month_transactions(filter_val, is_range=False):
     if is_range:
         start, end = filter_val
         c.execute("""
-            SELECT 'Donation', donor_name, category, amount, date, id, updated_at, category as fund, operator FROM donations 
+            SELECT 'Donation', donor_name, category, amount, date, id, updated_at, category as fund FROM donations 
             WHERE date >= ? AND date <= ? AND is_deleted=0
             UNION ALL 
-            SELECT 'Expense', title, category, amount, date, id, updated_at, fund_type as fund, operator FROM expenses 
+            SELECT 'Expense', title, category, amount, date, id, updated_at, fund_type as fund FROM expenses 
             WHERE date >= ? AND date <= ? AND is_deleted=0
             ORDER BY date DESC, updated_at DESC""", (start, end, start, end))
-
     else:
         mm, yyyy = filter_val.split("-")
         pattern = f"{yyyy}-{mm}-%"
         c.execute("""
-            SELECT 'Donation', donor_name, category, amount, date, id, updated_at, category as fund, operator FROM donations 
+            SELECT 'Donation', donor_name, category, amount, date, id, updated_at, category as fund FROM donations 
             WHERE date LIKE ? AND is_deleted=0
             UNION ALL 
-            SELECT 'Expense', title, category, amount, date, id, updated_at, fund_type as fund, operator FROM expenses 
+            SELECT 'Expense', title, category, amount, date, id, updated_at, fund_type as fund FROM expenses 
             WHERE date LIKE ? AND is_deleted=0
-            ORDER BY date DESC, updated_at DESC LIMIT 500""", (pattern, pattern))
-
-
+            ORDER BY date DESC, updated_at DESC""", (pattern, pattern))
     rows = c.fetchall()
     conn.close()
     return rows
@@ -735,17 +639,16 @@ def update_transaction(t_type, t_id, data):
     
     if t_type == "Donation":
         conn.execute("""UPDATE donations SET 
-            donor_name=?, amount=?, category=?, payment_type=?, date=?, updated_at=?, operator=?
+            donor_name=?, amount=?, category=?, payment_type=?, date=?, updated_at=?
             WHERE id=?""", 
             (data["donor_name"], data["amount"], data["category"], 
-             data["payment_type"], data["date"], now, data.get("operator", ""), t_id))
+             data["payment_type"], data["date"], now, t_id))
     else:
         conn.execute("""UPDATE expenses SET 
-            title=?, amount=?, category=?, paid_to=?, date=?, notes=?, updated_at=?, operator=?
+            title=?, amount=?, category=?, paid_to=?, date=?, notes=?, updated_at=?
             WHERE id=?""", 
             (data["title"], data["amount"], data["category"], 
-             data["paid_to"], data["date"], data["notes"], now, data.get("operator", ""), t_id))
-
+             data["paid_to"], data["date"], data["notes"], now, t_id))
     conn.commit()
     conn.close()
 
@@ -890,51 +793,10 @@ class MosqueApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
     def _on_closing(self):
-        # Auto-backup before exit
-        self._do_database_backup(auto=True)
-        self.destroy()
-
-    def _do_database_backup(self, path=None, auto=False):
-        """Perform database backup with rotation (keep last 10)."""
-        # Determine target directory
-        d = path or self.mosque_profile.get("backup_path", "").strip()
-        if not d and not auto:
-            d = filedialog.askdirectory()
-        
-        if not d:
-            if not auto: self.error("Error", "No backup directory selected.")
-            return
-
-        if not os.path.exists(d):
-            try: os.makedirs(d)
-            except: return
-
-        # Perform copy
-        tstr = datetime.now().strftime("%d%m%Y_%I%M%p")
-        fname = f"backup_{tstr}.db" if not auto else f"auto_backup_{tstr}.db"
-        fp = os.path.join(d, fname)
-        
-        try:
-            import shutil
-            shutil.copy2(get_db_path(), fp)
-            if not auto:
-                self.info("Backup", self.t("backup_success").format(path=fp))
-            log_action("BACKUP", "maintenance", 0, f"Database backup created: {fname}")
-            
-            # Rotation: Keep last 10
-            files = [os.path.join(d, f) for f in os.listdir(d) if f.endswith(".db") and ("auto_backup" in f or "backup_" in f)]
-            files.sort(key=os.path.getmtime, reverse=True)
-            
-            if len(files) > 10:
-                for old_f in files[10:]:
-                    try: os.remove(old_f)
-                    except: pass
-                    
-        except Exception as ex:
-            if not auto: self.error("Backup Error", str(ex))
+        if self.confirm(self.t("exit_title"), self.t("confirm_exit")):
+            self.destroy()
 
     def confirm(self, title, message):
-
         opts = [self.t("yes"), self.t("no")]
         res = ThemedMessagebox(self, title, message, type="question", options=opts).result
         return res in ["Yes", "جی ہاں"]
@@ -1259,7 +1121,7 @@ class MosqueApp(ctk.CTk):
             tf.columnconfigure(5, weight=0) # Actions column
             
             # Header row
-            headers = ["col_type", "col_amount", "fund", "col_date", "col_operator", "col_actions"]
+            headers = ["col_type", "col_amount", "fund", "col_date", "last_modified", "col_actions"]
             for i, k in enumerate(headers):
                 ctk.CTkLabel(tf, text=self.t(k), font=self._get_font(12, "bold"),
                              text_color=COLOR_TEXT_DIM, anchor="w", justify="left").grid(
@@ -1269,11 +1131,8 @@ class MosqueApp(ctk.CTk):
             ctk.CTkFrame(tf, fg_color=COLOR_BORDER, height=1).grid(row=1, column=0, columnspan=6, sticky="ew", padx=16)
 
 
-
-            for idx, txn_row in enumerate(txns):
-                t_type, name, cat, amount, date, t_id, updated_at, fund, op_val = txn_row
+            for idx, (t_type, name, cat, amount, date, t_id, updated_at, fund) in enumerate(txns):
                 is_don = t_type == "Donation"
-
                 bc = COLOR_GREEN if is_don else COLOR_RED
                 bt = self.t("type_donation") if is_don else self.t("type_expense")
                 
@@ -1296,90 +1155,26 @@ class MosqueApp(ctk.CTk):
                 ctk.CTkLabel(tf, text=format_date(date) if date else "—", font=self._get_font(12),
                              text_color=COLOR_TEXT_DIM, anchor="w").grid(row=idx+2, column=3, sticky="w", padx=20)
                 
-                # Column 4: Operator
-                ctk.CTkLabel(tf, text=op_val or "—", font=self._get_font(11),
+                # Column 4: Last Modified
+                ctk.CTkLabel(tf, text=updated_at if updated_at else "—", font=self._get_font(11),
                              text_color=COLOR_TEXT_DIM, anchor="w").grid(row=idx+2, column=4, sticky="w", padx=20)
-
                 
                 # Column 5: Actions
                 act_f = ctk.CTkFrame(tf, fg_color="transparent")
                 act_f.grid(row=idx+2, column=5, sticky="e", padx=16)
-
                 
-                ctk.CTkButton(act_f, text=self.t("print"), width=60, height=28, font=self._get_font(11),
-                              fg_color="transparent", border_width=1, border_color=COLOR_ACCENT,
-                              text_color=COLOR_ACCENT, hover_color=COLOR_CARD_HOVER,
-                              command=lambda t=t_type, i=t_id: self._print_receipt(t, i)).pack(side="left", padx=4)
-
-
-
                 ctk.CTkButton(act_f, text=self.t("edit"), width=50, height=28, font=self._get_font(11),
                               fg_color="transparent", border_width=1, border_color=COLOR_BORDER,
-                              command=lambda t=t_type, i=t_id: self._handle_edit(t, i, None)).pack(side="left", padx=4)
+                              command=lambda t=t_type, i=t_id, d={"donor_name": name, "title": name, "category": cat, "amount": amount, "date": date, "fund_type": fund}: self._handle_edit(t, i, d)).pack(side="left", padx=4)
                 
                 ctk.CTkButton(act_f, text=self.t("delete"), width=50, height=28, font=self._get_font(11),
                               fg_color="transparent", border_width=1, border_color="#ef4444",
                               text_color="#ef4444", hover_color="#451a1a",
                               command=lambda t=t_type, i=t_id: self._handle_delete(t, i)).pack(side="left")
-
             
             # Bottom spacing
             ctk.CTkFrame(tf, fg_color="transparent", height=8).grid(row=len(txns)+2, column=0)
 
-
-    def _print_receipt(self, t_type, t_id):
-        """Generate and open a text receipt for a transaction."""
-        conn = sqlite3.connect(get_db_path())
-        c = conn.cursor()
-        table = "donations" if t_type == "Donation" else "expenses"
-        c.execute(f"SELECT * FROM {table} WHERE id=?", (t_id,))
-        row = c.fetchone()
-        conn.close()
-        
-        if not row: return
-        
-        # Ensure receipts directory exists
-        r_dir = os.path.join(os.getcwd(), "receipts")
-        if not os.path.exists(r_dir): os.makedirs(r_dir)
-        
-        m_name = self.mosque_profile.get("mosque_name", "Mosque Management System")
-        m_phone = self.mosque_profile.get("phone", "")
-        
-        # Extract data based on table schema
-        if t_type == "Donation":
-            # (id, donor, amount, cat, pay, date, is_del, created, updated)
-            name, amt, cat, date = row[1], row[2], row[3], row[5]
-            label_name = "Donor Name"
-        else:
-            # (id, title, amount, cat, paid_to, date, notes, fund, ...)
-            name, amt, cat, date = row[1], row[2], row[3], row[5]
-            label_name = "Description"
-
-        receipt_content = f"""
-==========================================
-        {m_name.upper()}
-==========================================
-RECEIPT: {t_type.upper()}
-ID: {t_id} | DATE: {format_date(date)}
-------------------------------------------
-{label_name}: {name}
-AMOUNT: Rs {amt:,.0f}
-CATEGORY: {cat}
-------------------------------------------
-Phone: {m_phone}
-Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
-==========================================
-        THANK YOU
-==========================================
-"""
-        
-        fpath = os.path.join(r_dir, f"receipt_{t_type.lower()}_{t_id}.txt")
-        try:
-            with open(fpath, "w", encoding="utf-8") as f:
-                f.write(receipt_content)
-            os.startfile(fpath) # Open for printing
-        except Exception as ex:
-            self.error("Error", f"Could not generate receipt: {ex}")
 
     def _handle_edit(self, t_type, t_id, t_data):
         # We need to fetch the full data for edit
@@ -1391,14 +1186,8 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
         conn.close()
         
         if not row: return
-
-        # Check for Month Lock
-        if check_date_lock(row[5]):
-            self.error("Lock Error", self.t("err_month_locked"))
-            return
         
         if t_type == "Donation":
-
             # (id, donor_name, amount, category, payment_type, date, is_deleted, created_at, updated_at)
             full_data = {"donor_name": row[1], "amount": row[2], "category": row[3], "payment_type": row[4], "date": row[5]}
             self._show_add_donation(t_id, full_data)
@@ -1411,20 +1200,7 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
 
 
     def _handle_delete(self, t_type, t_id):
-        # Check for Month Lock
-        # Need date first
-        conn = sqlite3.connect(get_db_path())
-        c = conn.cursor()
-        table = "donations" if t_type == "Donation" else "expenses"
-        c.execute(f"SELECT date FROM {table} WHERE id=?", (t_id,))
-        r = c.fetchone()
-        conn.close()
-        if r and check_date_lock(r[0]):
-            self.error("Lock Error", self.t("err_month_locked"))
-            return
-
         from tkinter import messagebox
-
         if messagebox.askyesno(self.t("delete"), self.t("confirm_delete")):
             soft_delete_transaction(t_type, t_id)
             self._refresh_current_view()
@@ -1507,18 +1283,13 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
         e_date = ctk.CTkEntry(fi, height=44, corner_radius=10, font=self._get_font(15))
         if is_edit: e_date.insert(0, format_date(edit_data.get("date", "")))
         else: e_date.insert(0, get_today_date())
-        e_date.pack(fill="x", pady=(0, 16))
-
-
-
-
+        e_date.pack(fill="x", pady=(0, 20))
 
         status = ctk.CTkLabel(fi, text="", font=self._get_font(14, "bold"), anchor="w")
         status.pack(fill="x", pady=(0, 6))
 
-        def save(print_after=False):
+        def save():
             at = e_amt.get().strip()
-
             if not at:
                 status.configure(text=self.t("err_amount_required"), text_color=COLOR_AMBER); return
             try:
@@ -1535,62 +1306,39 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
             cat = self._resolve_combo_to_db(cb_cat.get(), DONATION_CAT_KEYS, DONATION_CAT_DB)
             pay = self._resolve_combo_to_db(cb_pay.get(), PAYMENT_TYPE_KEYS, PAYMENT_TYPE_DB)
             ds = parse_date_to_ymd(dt) if dt else datetime.now().strftime("%Y-%m-%d")
+            
             now = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
-            op = self.mosque_profile.get("imam_name", "")
-
-
             if is_edit:
                 update_transaction("Donation", edit_id, {
                     "donor_name": donor, "amount": av, "category": cat,
-                    "payment_type": pay, "date": ds, "operator": op
+                    "payment_type": pay, "date": ds
                 })
-                log_action("UPDATE", "donations", edit_id, f"Donation updated. Amount: {edit_data.get('amount')} -> {av}, Cat: {edit_data.get('category')} -> {cat}", operator=op)
-                
-                if print_after:
-                    self._print_receipt("Donation", edit_id)
+                log_action("UPDATE", "donations", edit_id, f"Donation updated. Amount: {edit_data.get('amount')} -> {av}, Cat: {edit_data.get('category')} -> {cat}")
                 self._show_dashboard()
             else:
                 conn = sqlite3.connect(get_db_path())
-                c = conn.execute("INSERT INTO donations (donor_name,amount,category,payment_type,date,is_deleted,created_at,updated_at,operator) VALUES (?,?,?,?,?,?,?,?,?)",
-                             (donor, av, cat, pay, ds, 0, now, now, op))
+                c = conn.execute("INSERT INTO donations (donor_name,amount,category,payment_type,date,is_deleted,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                             (donor, av, cat, pay, ds, 0, now, now))
                 did = c.lastrowid
                 conn.commit(); conn.close()
-                log_action("CREATE", "donations", did, f"Donation of {av} added from {donor} for {cat}", operator=op)
+                log_action("CREATE", "donations", did, f"Donation of {av} added from {donor} for {cat}")
                 e_donor.delete(0, "end"); e_amt.delete(0, "end")
-
                 cb_cat.set(dc[0]); cb_pay.set(pt[0])
                 e_date.delete(0, "end"); e_date.insert(0, get_today_date())
                 status.configure(text=self.t("donation_saved").format(amount=f"{av:,.0f}"), text_color=COLOR_GREEN)
-
-                
-                if print_after:
-                    self._print_receipt("Donation", did)
-
 
             status.configure(text=self.t("donation_saved").format(amount=f"{av:,.0f}"), text_color=COLOR_GREEN)
 
         br = ctk.CTkFrame(fi, fg_color="transparent")
         br.pack(fill="x", pady=(4, 0))
-        br.columnconfigure((0, 1, 2), weight=1)
-        
-        # Save & Print
-        ctk.CTkButton(br, text=self.t("save_and_print"), font=self._get_font(13, "bold"),
-                      fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_HOVER, text_color="#0f172a",
-                      height=50, corner_radius=12, 
-                      command=lambda: save(print_after=True)).grid(row=0, column=0, sticky="ew", padx=(0, 5))
-        
-        # Save Donation
-        ctk.CTkButton(br, text=self.t("save_donation"), font=self._get_font(13, "bold"),
+        br.columnconfigure(0, weight=3); br.columnconfigure(1, weight=1)
+        ctk.CTkButton(br, text=self.t("save_donation"), font=self._get_font(16, "bold"),
                       fg_color=COLOR_GREEN, hover_color="#22c55e", text_color="#0f172a",
-                      height=50, corner_radius=12, 
-                      command=lambda: save(print_after=False)).grid(row=0, column=1, sticky="ew", padx=5)
-        
-        # Back
-        ctk.CTkButton(br, text=self.t("go_dashboard"), font=self._get_font(13),
+                      height=50, corner_radius=12, command=save).grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        ctk.CTkButton(br, text=self.t("go_dashboard"), font=self._get_font(14),
                       fg_color=COLOR_CARD_HOVER, hover_color=COLOR_BORDER, text_color=COLOR_TEXT,
                       height=50, corner_radius=12,
-                      command=lambda: self._nav_click("dashboard", self._show_dashboard)).grid(row=0, column=2, sticky="ew", padx=(5, 0))
-
+                      command=lambda: self._nav_click("dashboard", self._show_dashboard)).grid(row=0, column=1, sticky="ew")
 
     # ──────────────────────────────────────────
     # ADD EXPENSE
@@ -1701,11 +1449,7 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
         e_notes = ctk.CTkTextbox(fi, height=70, corner_radius=10, font=self._get_font(15),
                                  fg_color=COLOR_BG_DARK)
         if is_edit: e_notes.insert("1.0", edit_data.get("notes", ""))
-        e_notes.pack(fill="x", pady=(0, 16))
-
-
-
-
+        e_notes.pack(fill="x", pady=(0, 20))
 
         status = ctk.CTkLabel(fi, text="", font=self._get_font(14, "bold"), anchor="w", wraplength=400)
         status.pack(fill="x", pady=(0, 6))
@@ -1722,9 +1466,8 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
         cb_fund.configure(command=on_fund_change)
         cb_cat.configure(command=on_fund_change)
 
-        def save(print_after=False):
+        def save():
             tt = e_title.get().strip()
-
             if not tt:
                 status.configure(text=self.t("err_title_required"), text_color=COLOR_AMBER); return
             at = e_amt.get().strip()
@@ -1757,65 +1500,44 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
             paid = e_paid.get().strip()
             ds = parse_date_to_ymd(dt) if dt else datetime.now().strftime("%Y-%m-%d")
             notes = e_notes.get("1.0", "end-1c").strip()
+            
             now = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
-            op = self.mosque_profile.get("imam_name", "")
-
             if is_edit:
                 table = "expenses"
-                update_transaction("Expense", edit_id, {
-                    "title": tt, "amount": av, "category": cat,
-                    "paid_to": paid, "date": ds, "notes": notes, "fund_type": fund_db, "operator": op
-                })
-                log_action("UPDATE", "expenses", edit_id, f"Expense updated. Amount: {edit_data.get('amount')} -> {av}, Fund: {edit_data.get('fund_type')} -> {fund_db}", operator=op)
-
-
-                
-                if print_after:
-                    self._print_receipt("Expense", edit_id)
+                conn = sqlite3.connect(get_db_path())
+                conn.execute("""UPDATE expenses SET 
+                    title=?, amount=?, category=?, paid_to=?, date=?, notes=?, fund_type=?, updated_at=?
+                    WHERE id=?""", 
+                    (tt, av, cat, paid, ds, notes, fund_db, now, edit_id))
+                conn.commit(); conn.close()
+                log_action("UPDATE", "expenses", edit_id, f"Expense updated. Amount: {edit_data.get('amount')} -> {av}, Fund: {edit_data.get('fund_type')} -> {fund_db}")
                 self._show_dashboard()
             else:
                 conn = sqlite3.connect(get_db_path())
-                c = conn.execute("INSERT INTO expenses (title,amount,category,paid_to,date,notes,fund_type,is_deleted,created_at,updated_at,operator) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                             (tt, av, cat, paid, ds, notes, fund_db, 0, now, now, op))
+                c = conn.execute("INSERT INTO expenses (title,amount,category,paid_to,date,notes,fund_type,is_deleted,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                             (tt, av, cat, paid, ds, notes, fund_db, 0, now, now))
                 eid = c.lastrowid
                 conn.commit(); conn.close()
-                log_action("CREATE", "expenses", eid, f"Expense of {av} added. Title: {tt}, Fund: {fund_db}", operator=op)
+                log_action("CREATE", "expenses", eid, f"Expense of {av} added. Title: {tt}, Fund: {fund_db}")
                 e_title.delete(0, "end"); e_amt.delete(0, "end")
-
-
                 cb_cat.set(ec[0]); e_paid.delete(0, "end")
                 e_date.delete(0, "end"); e_date.insert(0, get_today_date())
                 e_notes.delete("1.0", "end")
                 status.configure(text=self.t("expense_saved").format(amount=f"{av:,.0f}"), text_color=COLOR_GREEN)
-                
-                if print_after:
-                    self._print_receipt("Expense", eid)
-
 
 
 
         br = ctk.CTkFrame(fi, fg_color="transparent")
         br.pack(fill="x", pady=(4, 0))
-        br.columnconfigure((0, 1, 2), weight=1)
-        
-        # Save & Print
-        ctk.CTkButton(br, text=self.t("save_and_print"), font=self._get_font(13, "bold"),
-                      fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_HOVER, text_color="#0f172a",
-                      height=50, corner_radius=12, 
-                      command=lambda: save(print_after=True)).grid(row=0, column=0, sticky="ew", padx=(0, 5))
-        
-        # Save Expense
-        ctk.CTkButton(br, text=self.t("save_expense"), font=self._get_font(13, "bold"),
+        br.columnconfigure(0, weight=3); br.columnconfigure(1, weight=1)
+        ctk.CTkButton(br, text=self.t("save_expense"), font=self._get_font(16, "bold"),
                       fg_color=COLOR_GREEN, hover_color="#22c55e", text_color="#0f172a",
-                      height=50, corner_radius=12, 
-                      command=lambda: save(print_after=False)).grid(row=0, column=1, sticky="ew", padx=5)
-        
-        # Back
-        ctk.CTkButton(br, text=self.t("go_dashboard"), font=self._get_font(13),
+                      height=50, corner_radius=12, command=save).grid(row=0, column=0, sticky="ew", padx=(0, 10))
+
+        ctk.CTkButton(br, text=self.t("go_dashboard"), font=self._get_font(14),
                       fg_color=COLOR_CARD_HOVER, hover_color=COLOR_BORDER, text_color=COLOR_TEXT,
                       height=50, corner_radius=12,
-                      command=lambda: self._nav_click("dashboard", self._show_dashboard)).grid(row=0, column=2, sticky="ew", padx=(5, 0))
-
+                      command=lambda: self._nav_click("dashboard", self._show_dashboard)).grid(row=0, column=1, sticky="ew")
 
     # ──────────────────────────────────────────
     # EMPLOYEES SCREEN
@@ -2172,7 +1894,7 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
             lines.append("=" * 60)
 
 
-            report_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
+            report_dir = os.path.join(get_base_dir(), "reports")
             os.makedirs(report_dir, exist_ok=True)
             rf_name = sel_label.replace('-', '_').replace(' ', '_')
             fname = os.path.join(report_dir, f"report_{rf_name}.txt")
@@ -2190,39 +1912,12 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
                       text_color=COLOR_TEXT, width=80, height=36, corner_radius=8,
                       command=lambda: render_report()).pack(side="right")
 
-        # Month Integrity Control
-        integrity_frame = ctk.CTkFrame(wrapper, fg_color=COLOR_CARD, corner_radius=12, border_width=1, border_color=COLOR_BORDER)
-        integrity_frame.pack(fill="x", pady=(16, 0))
-        
-        status_lbl = ctk.CTkLabel(integrity_frame, text="", font=self._get_font(14, "bold"))
-        status_lbl.pack(side="left", padx=20, pady=15)
-        
-        def refresh_integrity():
-            m = month_var.get()
-            closed = is_month_closed(m)
-            for w in integrity_frame.winfo_children():
-                if w != status_lbl: w.destroy()
-            
-            if closed:
-                status_lbl.configure(text=f"🔒 {self.t('month_closed')} ({m})", text_color=COLOR_RED)
-                ctk.CTkButton(integrity_frame, text=self.t("reopen_month"), width=150, height=34,
-                              fg_color="#334155", hover_color="#475569", 
-                              command=lambda: self._show_password_prompt(self.t("confirm_identity"), f"Are you sure you want to REOPEN {m}?", lambda: [reopen_period(m), refresh_integrity()])).pack(side="right", padx=20)
-            else:
-                status_lbl.configure(text=f"🔓 {self.t('month_open')} ({m})", text_color=COLOR_GREEN)
-                ctk.CTkButton(integrity_frame, text=self.t("close_month"), width=150, height=34,
-                              fg_color=COLOR_RED, hover_color="#b91c1c",
-                              command=lambda: [close_period(m), refresh_integrity()]).pack(side="right", padx=20)
-
         # Container for report content
-
         report_frame = ctk.CTkFrame(wrapper, fg_color="transparent")
         report_frame.pack(fill="both", expand=True, pady=(16, 0))
 
         def render_report(*args):
-            refresh_integrity()
             for w in report_frame.winfo_children():
-
                 w.destroy()
 
             is_range = mode_var.get() == "Date Range"
@@ -2336,21 +2031,18 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
                 scroll_tbl.columnconfigure(7, weight=0) # Actions column
                 
                 # Header row
-                cw = [100, 200, 120, 120, 140, 120, 140, 120]
-                cols = ["col_type", "col_name", "fund", "col_category", "col_amount", "col_date", "col_operator", "col_actions"]
+                cw = [100, 200, 120, 120, 140, 120, 160, 120]
+                cols = ["col_type", "col_name", "fund", "col_category", "col_amount", "col_date", "last_modified", "col_actions"]
                 for i, k in enumerate(cols):
                     ctk.CTkLabel(scroll_tbl, text=self.t(k), font=self._get_font(12, "bold"),
                                  text_color=COLOR_TEXT_DIM, anchor="w", width=cw[i]).grid(
                                      row=0, column=i, sticky="w", padx=(16 if i == 0 else 10), pady=(12, 6))
 
-
                 
                 ctk.CTkFrame(scroll_tbl, fg_color=COLOR_BORDER, height=1).grid(row=1, column=0, columnspan=8, sticky="ew", padx=16)
 
-                for idx, txn_row in enumerate(txns):
-                    t_type, name, cat, amount, date, t_id, updated_at, fund, op_val = txn_row
+                for idx, (t_type, name, cat, amount, date, t_id, updated_at, fund) in enumerate(txns):
                     is_don = t_type == "Donation"
-
                     bc = COLOR_GREEN if is_don else COLOR_RED
                     bt = self.t("type_donation") if is_don else self.t("type_expense")
                     
@@ -2381,32 +2073,23 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
                     ctk.CTkLabel(scroll_tbl, text=format_date(date), font=self._get_font(13),
                                  text_color=COLOR_TEXT_DIM, anchor="w", width=120).grid(row=idx+2, column=5, sticky="w", padx=10)
                     
-                    # Column 6: Operator
-                    ctk.CTkLabel(scroll_tbl, text=op_val or "—", font=self._get_font(12),
-                                 text_color=COLOR_TEXT_DIM, anchor="w", width=140).grid(row=idx+2, column=6, sticky="w", padx=10)
-
+                    # Column 6: Last Modified
+                    ctk.CTkLabel(scroll_tbl, text=updated_at if updated_at else "—", font=self._get_font(11),
+                                 text_color=COLOR_TEXT_DIM, anchor="w", width=160).grid(row=idx+2, column=6, sticky="w", padx=10)
 
                     
                     # Column 7: Actions
                     act_f = ctk.CTkFrame(scroll_tbl, fg_color="transparent")
                     act_f.grid(row=idx+2, column=7, sticky="e", padx=16)
                     
-                    ctk.CTkButton(act_f, text=self.t("print"), width=60, height=28, font=self._get_font(11),
-                                  fg_color="transparent", border_width=1, border_color=COLOR_ACCENT,
-                                  text_color=COLOR_ACCENT, hover_color=COLOR_CARD_HOVER,
-                                  command=lambda t=t_type, i=t_id: self._print_receipt(t, i)).pack(side="left", padx=4)
-
-
-
                     ctk.CTkButton(act_f, text=self.t("edit"), width=50, height=28, font=self._get_font(11),
                                   fg_color="transparent", border_width=1, border_color=COLOR_BORDER,
-                                  command=lambda t=t_type, i=t_id: self._handle_edit(t, i, None)).pack(side="left", padx=4)
+                                  command=lambda t=t_type, i=t_id, d={"donor_name": name, "title": name, "category": cat, "amount": amount, "date": date, "payment_type": "", "notes": "", "paid_to": "", "fund_type": fund}: self._handle_edit(t, i, d)).pack(side="left", padx=4)
                     
                     ctk.CTkButton(act_f, text=self.t("delete"), width=50, height=28, font=self._get_font(11),
                                   fg_color="transparent", border_width=1, border_color="#ef4444",
                                   text_color="#ef4444", hover_color="#451a1a",
                                   command=lambda t=t_type, i=t_id: self._handle_delete(t, i)).pack(side="left")
-
 
             
             # Bottom spacing
@@ -2498,12 +2181,11 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
                 ctk.CTkLabel(scroll_f, text=self.t("no_transactions"), font=self._get_font(13), text_color=COLOR_TEXT_DIM).pack(pady=40)
                 return
                 
-            for idx, (ts, atype, desc, table, rid, op) in enumerate(logs):
+            for idx, (ts, atype, desc, table, rid) in enumerate(logs):
                 f = ctk.CTkFrame(scroll_f, fg_color="transparent")
                 f.pack(fill="x", padx=12, pady=4)
                 f.columnconfigure((0, 1), weight=0)
                 f.columnconfigure(2, weight=1)
-                f.columnconfigure(3, weight=0)
                 
                 # Timestamp
                 ctk.CTkLabel(f, text=ts, font=self._get_font(12), text_color=COLOR_TEXT_DIM, width=160, anchor="w").grid(row=0, column=0)
@@ -2519,11 +2201,7 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
 
                 
                 # Description
-                ctk.CTkLabel(f, text=desc, font=self._get_font(12), text_color=COLOR_TEXT, anchor="w", justify="left", wraplength=400).grid(row=0, column=2, padx=20, sticky="w")
-                
-                # Operator
-                ctk.CTkLabel(f, text=f"👤 {op or '—'}", font=self._get_font(11), text_color=COLOR_ACCENT, width=120, anchor="e").grid(row=0, column=3, padx=(10, 0))
-
+                ctk.CTkLabel(f, text=desc, font=self._get_font(12), text_color=COLOR_TEXT, anchor="w", justify="left", wraplength=500).grid(row=0, column=2, padx=20, sticky="w")
                 
                 if idx < len(logs) - 1:
                     ctk.CTkFrame(scroll_f, fg_color=COLOR_BORDER, height=1).pack(fill="x", padx=12, pady=2)
@@ -2590,10 +2268,9 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
 
         f4 = ctk.CTkFrame(row2, fg_color="transparent")
         f4.grid(row=0, column=1, sticky="ew", padx=(8,0))
-        ctk.CTkLabel(f4, text=self.t("operator_name"), font=self._get_font(13), text_color=COLOR_TEXT_DIM, anchor="w").pack(fill="x")
+        ctk.CTkLabel(f4, text=self.t("imam_name"), font=self._get_font(13), text_color=COLOR_TEXT_DIM, anchor="w").pack(fill="x")
         e_imam = ctk.CTkEntry(f4, height=40, font=self._get_font(14))
         e_imam.pack(fill="x")
-
 
         ctk.CTkLabel(pi, text=self.t("notes"), font=self._get_font(13), text_color=COLOR_TEXT_DIM, anchor="w").pack(fill="x")
         e_notes = ctk.CTkTextbox(pi, height=80, font=self._get_font(14), fg_color=COLOR_BG_DARK, corner_radius=10)
@@ -2723,8 +2400,24 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
 
         
         def do_backup():
-            self._do_database_backup()
-
+            d = self.mosque_profile.get("backup_path", "").strip()
+            if not d:
+                d = filedialog.askdirectory()
+            
+            if d and os.path.isdir(d):
+                tstr = datetime.now().strftime("%d%m%Y_%I%M%p")
+                fp = os.path.join(d, f"backup_{tstr}.db")
+                try:
+                    import shutil
+                    shutil.copy2(get_db_path(), fp)
+                    self.info("Backup", self.t("backup_success").format(path=fp))
+                    log_action("BACKUP", "maintenance", 0, f"Database backup created: {os.path.basename(fp)}")
+                except Exception as ex:
+                    self.error("Error", str(ex))
+            elif not d: # user cancelled or no path
+                pass
+            else:
+                self.error("Backup Error", "Saved backup path is invalid. Please select again.")
 
 
         def do_restore():
@@ -2820,8 +2513,8 @@ Generated on: {datetime.now().strftime("%d-%m-%Y %I:%M %p")}
         
         ctk.CTkLabel(ai, text=self.t("about_developer"), font=self._get_font(18, "bold"), text_color=COLOR_TEXT, anchor="w").pack(fill="x", pady=(0, 12))
         ctk.CTkLabel(ai, text="Salman Asmat", font=self._get_font(15, "bold"), text_color=COLOR_ACCENT, anchor="w").pack(fill="x", pady=2)
-        ctk.CTkLabel(ai, text="Email: salmanasmat@outlook.com", font=self._get_font(13), text_color=COLOR_TEXT_DIM, anchor="w").pack(fill="x", pady=2)
-        ctk.CTkLabel(ai, text="Website: salmanasmat.com", font=self._get_font(13), text_color=COLOR_TEXT_DIM, anchor="w").pack(fill="x", pady=2)
+        ctk.CTkLabel(ai, text="Email: hello@salmanasmat.com", font=self._get_font(13), text_color=COLOR_TEXT_DIM, anchor="w").pack(fill="x", pady=2)
+        ctk.CTkLabel(ai, text="GitHub: github.com/salmanasmat", font=self._get_font(13), text_color=COLOR_TEXT_DIM, anchor="w").pack(fill="x", pady=2)
 
 
 # ──────────────────────────────────────────────

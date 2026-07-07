@@ -1,4 +1,6 @@
-# 🕌 Lightweight Mosque Admin System for Local Masjid Committees
+# 🕌 Mosque Management System (Finance Tracker)
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 A premium, offline-first desktop application designed for mosques to manage donations, expenses, and employee payroll with multi-language support (English & Urdu) and advanced security features.
 
@@ -10,7 +12,7 @@ A premium, offline-first desktop application designed for mosques to manage dona
 - **📝 Expense Tracking**: Record electricity, gas, water, maintenance, and salary payouts with fund-specific controls.
 - **📊 Interactive Dashboard**: Real-time summary of total donations, expenses, and net balance with visual breakdown.
 - **📋 Full Audit Log**: Complete transparency with a detailed record of every administrative and financial action taken.
-- **📄 Pro Reports**: Generate and print detailed financial reports, including fund-based balance summaries.
+- **📄 Pro Reports**: Generate and print detailed financial reports including fund-based balance summaries.
 - **👥 Human Resources**: Manage employees (Imams, Moazzins, etc.) and handle monthly salary disbursements efficiently.
 - **🌐 Multi-Language Support**: Professional toggle between English and Urdu (Nastaleeq font) tailored for mosque use.
 - **🔒 Advanced Security**:
@@ -66,7 +68,7 @@ A premium, offline-first desktop application designed for mosques to manage dona
 - **Fonts**: Segoe UI (English), Jameel Noori Nastaleeq (Urdu)
 
 ## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPL v3 License - see the [LICENSE](LICENSE) file for details.
 
 ---
 Built with ❤️ for Mosque Management.
