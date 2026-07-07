@@ -45,3 +45,7 @@ installer-output/
 # OS
 .DS_Store
 Thumbs.db
+
+# Promotional Drafts
+SOCIAL_MEDIA.md
+
