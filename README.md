@@ -1,6 +1,11 @@
 # 🕌 Mosque Management System (Finance Tracker)
 
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)](https://github.com/salmanasmat/mosque-management)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![GitHub Release](https://img.shields.io/github/v/release/salmanasmat/mosque-management?color=brightgreen&logo=github)](https://github.com/salmanasmat/mosque-management/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/salmanasmat/mosque-management?style=social)](https://github.com/salmanasmat/mosque-management)
+[![Maintenance](https://img.shields.io/badge/Maintained-Yes-green.svg)](https://github.com/salmanasmat/mosque-management/commits/)
 
 A premium, offline-first desktop application designed for mosques to manage donations, expenses, and employee payroll with multi-language support (English & Urdu) and advanced security features.
 
@@ -27,7 +32,7 @@ A premium, offline-first desktop application designed for mosques to manage dona
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.7+
+- Python 3.8+
 - [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
 - `sqlite3` (usually included with Python)
 
