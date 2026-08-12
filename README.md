@@ -4,7 +4,7 @@
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)](https://github.com/salmanasmat/mosque-management)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![GitHub Release](https://img.shields.io/github/v/release/salmanasmat/mosque-management?color=brightgreen&logo=github)](https://github.com/salmanasmat/mosque-management/releases)
-[![GitHub Stars](https://img.shields.io/github/stars/salmanasmat/mosque-management?style=social)](https://github.com/salmanasmat/mosque-management)
+[![GitHub Downloads](https://img.shields.io/github/downloads/salmanasmat/mosque-management/total?color=orange&logo=github)](https://github.com/salmanasmat/mosque-management/releases)
 [![Maintenance](https://img.shields.io/badge/Maintained-Yes-green.svg)](https://github.com/salmanasmat/mosque-management/commits/)
 
 A premium, offline-first desktop application designed for mosques to manage donations, expenses, and employee payroll with multi-language support (English & Urdu) and advanced security features.
